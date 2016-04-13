@@ -70,11 +70,11 @@ else
     while buf = cif.gets
 
       str = buf.chomp
-      if /^!.*/ =~ str then
+#      if /^!.*/ =~ str then
         # do nothing
-      else
+#      else
         util.send(str)
-      end
+#      end
     end
 
   rescue => e
