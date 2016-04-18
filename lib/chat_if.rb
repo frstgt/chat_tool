@@ -1,71 +1,126 @@
 # encoding: utf-8
 
-require "curses"
+require "tk"
+
+require "./lib/util"
 
 class ChatIf
 
   def initialize(title, enable=true)
     @enable = enable
     if @enable then
-      Curses.init_screen
-      @title = Curses::Window.new(1,Curses.cols,0,0)
-      title_update(title)
-      @member = Curses::Window.new(Curses.lines-1,10,1,Curses.cols-10)
-      member_update([])
-      @chatline = Curses::Window.new(Curses.lines-3,Curses.cols-10,1,0)
-      @chatline.scrollok(true)
-      @chatline.refresh
-      @input = Curses::Window.new(2,Curses.cols-10,Curses.lines-2,0)
-      @input.refresh
+      @root = TkRoot.new {
+        title title
+      }
+
+      yscrollbar = TkScrollbar.new(@root) {
+        orient "vertical"
+        width 16
+        grid(row: 0, column: 1, sticky: "news")
+      }
+      @chatline = TkText.new(@root) {
+        state "disabled"
+        width 80
+        height 24
+        yscrollbar yscrollbar
+        yscrollcommand proc{ |first,last|
+           first = (1 - (last.to_f - first.to_f)).to_s
+           last = "1"
+           yscrollbar.set(first,last)
+        }
+        grid(row: 0, column: 0, sticky: "news")
+      }
+
+      @member = TkText.new(@root) {
+        state "disabled"
+        width 10
+        # height (Don't set a fix value here.)
+        grid(row: 0, column: 2, rowspan: 2, sticky: "news")
+      }
+
+      @input = TkEntry.new(@root) {
+        grid(row: 1, column: 0, columnspan: 2, sticky: "news")
+      }
     end
   end
 
   def title_update(title)
     if @enable then
-      @title.setpos(0, Curses.cols/2 - (title.length/2))
-      @title.addstr(title)
-      @title.refresh
+      @root.title = title
     else
       p "title: " + title
     end
   end
   def member_update(member_ary)
     if @enable then
-      @member.clear
+      @member.state = "normal"
+      @member.value = ""
       for id in member_ary do
-        @member.addstr(id + "\n")
+        @member.value += id + "\n"
       end
-      @member.refresh
+      @member.state = "disabled"
     else
       p "member: " + member_ary.to_s
     end
   end
-  def puts(str)
-    if @enable then
-      @chatline.addstr(str + "\n")
-      @chatline.refresh
-    else
-      Kernel::puts(str)
-    end
-  end
+
   def gets
     if @enable then
-      @input.clear
-      @input.addstr("> ")
-      @input.refresh
-      @input.getstr
+      str = @input.value.encode("UTF-8", "Windows-31J")
+      @input.value = ""
+      str
     else
       Kernel::gets
     end
   end
-
-  def finarize
+  def puts(str)
     if @enable then
-      @input.close
-      @chatline.close
-      @member.close
-      @title.close
-      Curses.close_screen
+      @chatline.state = "normal"
+      @chatline.value += (str + "\n").encode("Windows-31J", "UTF-8")
+      @chatline.state = "disabled"
+    else
+      Kernel::puts(str)
     end
   end
+
+  def mainloop(sender, receiver)
+    if @enable then
+      @input.bind("Return", sender)
+      receiver_t = Thread.new do
+        receiver.call
+      end
+      Tk.mainloop
+      receiver_t.exit
+    else
+      nop while true
+    end
+  end
+
 end
+
+# for debug
+=begin
+begin
+  cif = ChatIf.new("ChatClient")
+  sender = Proc.new {
+    buf = cif.gets
+    str = buf.chomp
+    if str != "" then
+      cif.puts(str)
+    end
+  }
+  receiver = Proc.new {
+    p "receive"
+    loop do
+    end
+  }
+  cif.mainloop(sender, receiver)
+rescue => e
+  puts "#$!#$@"
+ensure
+  loop do
+  end
+end
+=end
+
+# end of file
