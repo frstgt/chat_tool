@@ -11,14 +11,14 @@ require "./lib/chat_sys"
 require "./lib/util"
 
 begin # init
-  log = LogUtil.new("./log", SERVER_NAME, LOG_ENABLE)
+  log = LogUtil.new("./log", SERVER_NAME, SERVER_LOG_ENABLE)
 
   server = TCPServer.open('', SERVER_PORT_NUMBER)
   csys = ChatSys.new
 
   puts log.time_rec("chat server running...")
 rescue
-  log.time_rec("init: #$! #$@")
+  puts log.time_rec("init: #$! #$@")
 else
 
   sub_servers = Array.new
@@ -38,7 +38,7 @@ else
       else
 
         # start thread for receiving message from client
-        receiver = Thread.new do
+        receiver = Thread.new(sub_server) do |parent|
           begin
             while str = util.receive
 
@@ -71,22 +71,25 @@ else
               end
             end
           rescue
-            log.time_rec("receiver: #$! #$@")
+            puts log.time_rec("receiver: #$! #$@")
           ensure
             # delete client information
             csys.send_to_all_without_me("!del_member:" + client_id, client_id)
             csys.del_member(client_key)
+            parent.exit
           end
         end # receiver
 
         # start thread for sending message to client
-        sender = Thread.new do
+        sender = Thread.new(sub_server) do |parent|
           begin
             while t_str = csys.receive(client_key)
               util.send(t_str)
             end
           rescue
-            log.time_rec("sender: #$! #$@")
+            puts log.time_rec("sender: #$! #$@")
+          ensure
+            parent.exit
           end
         end # sender
 
@@ -95,9 +98,9 @@ else
         end
 
       ensure
-        receiver.exit
-        sender.exit
-        socket.close
+        receiver.exit if receiver
+        sender.exit if receiver
+        socket.close if socket
         puts log.time_rec(client_key + ": ...disconnected")
       end
     end # sub_server
@@ -112,7 +115,6 @@ ensure
   end
   server.close
   puts log.time_rec("... chat server stopped")
-  exit!
 end # init
 
 # end of code

@@ -17,11 +17,17 @@ class LogUtil
   end
 
   def rec(str)
-    @log_file.puts(str) if @enable
+    if @enable then
+      @log_file.puts(str)
+      @log_file.flush
+    end
     str
   end
   def time_rec(str)
-    @log_file.puts(time_str + " " + str) if @enable
+    if @enable then
+      @log_file.puts(time_str + " " + str)
+      @log_file.flush
+    end
     str
   end
 

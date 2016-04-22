@@ -11,7 +11,7 @@ require "./lib/chat_if"
 require "./lib/util"
 
 begin # init
-  log = LogUtil.new("./log", CLIENT_NAME, LOG_ENABLE)
+  log = LogUtil.new("./log", CLIENT_NAME, CLIENT_LOG_ENABLE)
   cif = ChatIf.new(CLIENT_NAME, CHAT_INTERFACE_ENABLE)
 
   socket = TCPSocket.open(SERVER_IP_ADDRESS, SERVER_PORT_NUMBER)
